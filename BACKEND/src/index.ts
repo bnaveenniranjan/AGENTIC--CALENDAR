@@ -2,6 +2,7 @@ import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
 import { getPool } from './db/pool.js'
+import { connectionRouter } from './routes/connection.routes.js'
 
 const app = express();
 const port = Number(process.env.PORT) || 4000;
@@ -17,6 +18,8 @@ app.use(
 
 
 app.use(express.json())  
+
+app.use("/api/connections", connectionRouter)
 
 app.get("/health",async(_req,res)=>{
     try{

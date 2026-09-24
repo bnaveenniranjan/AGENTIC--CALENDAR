@@ -14,3 +14,10 @@ export function getPool() : Pool{
     }
     return pool;
 }
+
+export async function closePool(): Promise<void> {
+    if (pool) {
+        await pool.end();
+        pool = null;
+    }
+}

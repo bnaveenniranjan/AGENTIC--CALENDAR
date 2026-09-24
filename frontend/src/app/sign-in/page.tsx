@@ -1,3 +1,5 @@
+import { RedirectifAuthenticated } from "@/components/auth/RedirectIfAuthenticated";
+import SignInComponent from "@/components/auth/sign-in";
 import { Card,CardDescription,CardHeader ,CardTitle} from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 
@@ -16,7 +18,12 @@ function SignInPage(){
 
             </CardDescription>
         </CardHeader>
+        <RedirectifAuthenticated>
+            <SignInComponent/>
+        </RedirectifAuthenticated>
+        
     </Card>
     </main>
+    
 }
 export default SignInPage;
