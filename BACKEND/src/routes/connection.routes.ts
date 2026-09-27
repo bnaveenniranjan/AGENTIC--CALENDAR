@@ -29,8 +29,29 @@ connectionRouter.post("/connect",async(req,res)=>{
         const redirectUrl =
         typeof req.body?.redirectUrl === 'string' ?
         req.body.redirectUrl:
-        `${process.env.APP_}`
+        `${process.env.APP_URL ?? "http://localhost:3000"}/dashboard`
+
+        const result = await createCalendarConnectUrl({
+            userId : req.auth!.userId,
+            refreshToken,
+            redirectUrl
+        })
+
+        res.json(result``)
     }catch{
         res.status(500).json({error:"could not start connection"})
     }
+});
+
+
+
+connectionRouter.post("/refresh-status",async(req,res)=>{
+    try{
+        const connection = await refreshCalendarConnection({
+
+        })
+    }catch{
+        res.status(500).json({error: "failed to refresh the status"})
+    }
 })
+
