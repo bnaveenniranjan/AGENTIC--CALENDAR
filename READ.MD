@@ -34,7 +34,7 @@ Application Architecture
 │   Chat UI, Dashboard, Auth UI  │
 └───────────────┬───────────────┘
                 │
-                │ HTTP/API Requests
+                │ HTTP/API Requests.
                 ▼
 ┌───────────────────────────────┐
 │        Node.js Backend         │
