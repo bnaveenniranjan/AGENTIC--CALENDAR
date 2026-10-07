@@ -25,7 +25,7 @@ export async function upsertCalendarConnection(input:{
         RETURNING user_id,provider,status
         `,
         [input.userId,input.status],
-    )
+    );
 
     return result.rows[0] ?? null;
 }

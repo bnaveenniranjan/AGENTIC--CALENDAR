@@ -1,7 +1,7 @@
 import {Router} from 'express'
 import { requireSession } from '../middleware/requireSession.js';
 import { getCalendarConnection } from '../service/connection.service.js';
-
+import { createCalendarConnectUrl } from '../service/connection.service.js';
 export const connectionRouter = Router();
 
 connectionRouter.use(requireSession)
@@ -48,6 +48,8 @@ connectionRouter.post("/connect",async(req,res)=>{
 connectionRouter.post("/refresh-status",async(req,res)=>{
     try{
         const connection = await refreshCalendarConnection({
+            userId : req.auth!.userId,
+            authUserId : req.auth!.authUserId
 
         })
     }catch{

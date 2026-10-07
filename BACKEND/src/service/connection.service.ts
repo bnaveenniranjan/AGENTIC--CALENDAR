@@ -1,5 +1,5 @@
-import { CALENDAR_CONNECTION_ID, CALENDAR_CONNECTION_LABEL } from "../config/descope.js";
-import { getCalendarConnectionRow } from "../repositories/connection.repository.js";
+import { CALENDAR_CONNECTION_ID, CALENDAR_CONNECTION_LABEL, descopeClient } from "../config/descope.js";
+import { getCalendarConnectionRow, upsertCalendarConnection } from "../repositories/connection.repository.js";
 
 function calendarAppId(){
     if(!CALENDAR_CONNECTION_ID){
@@ -35,6 +35,29 @@ export async function createCalendarConnectUrl(input :{
 
     return {url : response.data.url};
 
+}
 
+export async function refreshCalendarConnection(input:{
+    userId: string;
+    authUserId : string
+}){
 
+    if(!process.env.DESCOPE_MANAGEMENT_KEY){
+        throw new Error("DESCOPE_MANAGEMENT_KEY is not set in env file ")
+    }
+    const response = await descopeClient.management.outboundApplication.fetchToken(
+        calendarAppId(),
+        input.authUserId
+    )
+
+    const status = response.ok && response.data ? "connected" : "disconnected"
+
+    const  row = await upsertCalendarConnection ({
+        userId : input.userId,
+        status,
+    });
+    return {
+        label:CALENDAR_CONNECTION_LABEL,
+        STATUS : row.status,
+    };
 }

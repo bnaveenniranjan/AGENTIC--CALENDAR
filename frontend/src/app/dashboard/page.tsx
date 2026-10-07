@@ -2,12 +2,12 @@
 
 import {Button} from "@/components/ui/button";
 import { useDescope } from "@descope/nextjs-sdk/client";
-import { useRouter } from "next/navigation";          // ← ADD THIS
+import { useRouter } from "next/navigation";          
 import { useState } from "react";
 
 function DashBoardPage(){
     const sdk = useDescope()
-    const router = useRouter()                         // ← ADD THIS
+    const router = useRouter()                         
     const [loggingOut,setLoggingout] = useState(false)
 
     async function handleLogout(){
