@@ -6,6 +6,8 @@ import { useDescope, useUser } from "@descope/nextjs-sdk/client";
 import { useRouter } from "next/navigation";          
 import { useState } from "react";
 import { useSession } from "@descope/nextjs-sdk/client";
+import ConnectionsPanel  from "@/components/dashboard/connection-panel";
+import { LogOut } from "lucide-react";
 
 const styles = {
   loadingShell:
@@ -21,10 +23,8 @@ function DashBoardPage(){
     const sdk = useDescope();
     const router = useRouter();
     const {isAuthenticated,sessionToken} = useSession();
-    const {user,isUserLoading} = useUser()                         
+    const {user,isUserLoading} = useUser();
     const [loggingOut,setLoggingout] = useState(false);
-    
-    const label = user?.email || user?.name || "Signed in User"
 
 
     async function handleLogout(){
@@ -47,8 +47,28 @@ function DashBoardPage(){
 
     return (
         <div className={styles.shell}>
-         <ChatPanel/>
+         <ChatPanel
+         sessionToken={sessionToken}
+         connections = {<ConnectionsPanel sessionToken={sessionToken}/>}
+         footer={
+            <>
+            <div className={styles.userLabel}>
+                {isUserLoading ? "Loading..." : user?.name || user?.loginIds?.[0]}
 
+            </div>
+            <Button
+            variant='ghost'
+            className={styles.logoutBtn}
+            disabled={loggingOut}
+            onClick={handleLogout}
+            >
+                <LogOut className={styles.logoutIcon}/>
+                {loggingOut ? "Logging out..." : "log out"}
+
+            </Button>
+            </>
+         }
+         />
         </div>
     );
 }

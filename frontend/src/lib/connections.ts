@@ -1,7 +1,9 @@
 import { apiFetch } from "./api";
 
-interface ConnectionInfo {
-    // Add appropriate properties here
+export interface ConnectionInfo {
+    id: string;
+    status: boolean;
+    label: string;
 }
 
 function getRefreshToken(): string | null {
@@ -34,7 +36,7 @@ export async function ConnectionCalendar(token : string){
 
 
 export async function refreshCalendarConnection(token: string){
-    await apiFetch("/api/connections/refresh-status"{
+    await apiFetch("/api/connections/refresh-status", {
         method : 'POST',
         token,
 
