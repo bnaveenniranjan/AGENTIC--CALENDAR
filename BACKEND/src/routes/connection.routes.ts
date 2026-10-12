@@ -1,7 +1,6 @@
 import {Router} from 'express'
 import { requireSession } from '../middleware/requireSession.js';
-import { getCalendarConnection } from '../service/connection.service.js';
-import { createCalendarConnectUrl } from '../service/connection.service.js';
+import { getCalendarConnection, createCalendarConnectUrl, refreshCalendarConnection } from '../service/connection.service.js';
 export const connectionRouter = Router();
 
 connectionRouter.use(requireSession)
@@ -25,6 +24,7 @@ connectionRouter.post("/connect",async(req,res)=>{
         if(!refreshToken){
 
             res.status(400).json({error : "Refresh token required"})
+            return;
         }
         const redirectUrl =
         typeof req.body?.redirectUrl === 'string' ?
@@ -37,7 +37,7 @@ connectionRouter.post("/connect",async(req,res)=>{
             redirectUrl
         })
 
-        res.json(result``)
+        res.json(result)
     }catch{
         res.status(500).json({error:"could not start connection"})
     }
@@ -52,6 +52,7 @@ connectionRouter.post("/refresh-status",async(req,res)=>{
             authUserId : req.auth!.authUserId
 
         })
+        res.json({connection})
     }catch{
         res.status(500).json({error: "failed to refresh the status"})
     }

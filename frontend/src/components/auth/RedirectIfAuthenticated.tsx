@@ -1,29 +1,34 @@
 'use client'
 
-import {useSession} from "@descope/nextjs-sdk/client";
-import {useRouter} from "next/navigation";
-import { useEffect } from "react";
-import {Skeleton} from "../ui/Skeleton";
+import { useSession } from "@descope/nextjs-sdk/client";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { Skeleton } from "../ui/Skeleton";
 
-export function  RedirectifAuthenticated({children} : {children : React.ReactNode }){
-    const {isAuthenticated , isSessionLoading} = useSession()
-    const router = useRouter()
+export function RedirectifAuthenticated({ children }: { children: React.ReactNode }) {
+    const { isAuthenticated, isSessionLoading } = useSession();
+    const router = useRouter();
+    const redirectedRef = useRef(false);
 
-    useEffect(() =>{
-        if(!isSessionLoading && isAuthenticated){
-            router.replace("/dashboard")
+    useEffect(() => {
+        if (redirectedRef.current) return;
+        if (!isSessionLoading && isAuthenticated) {
+            redirectedRef.current = true;
+            router.replace("/dashboard");
         }
-    },[isAuthenticated,isSessionLoading,router])
+    }, [isAuthenticated, isSessionLoading, router]);
 
-    if(isSessionLoading || isAuthenticated){
-        return(
-            <div className="flex flex-col items-center gap-3 py-8 ">
-                <Skeleton className="h-4 w-40"/>
-                <Skeleton  className = "h-10 w-full"/>
-                <Skeleton className = "h-10 w-full"/>
+    if (isSessionLoading) {
+        return (
+            <div className="flex flex-col items-center gap-3 py-8">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
             </div>
-    
-        )
+        );
     }
-    return children
+
+    if (isAuthenticated) return null;
+
+    return children;
 }

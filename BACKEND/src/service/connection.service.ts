@@ -12,8 +12,9 @@ function calendarAppId(){
 export async function getCalendarConnection(userId: string){
     const row = await getCalendarConnectionRow(userId)
     return{
+        id: row?.user_id ?? userId,
         label : CALENDAR_CONNECTION_LABEL,
-        status : row?.status ?? ("disconnected" as const)
+        status : row?.status === "connected"
     }
 }
 export async function createCalendarConnectUrl(input :{
@@ -27,7 +28,7 @@ export async function createCalendarConnectUrl(input :{
         input.refreshToken
     )
 
-    if(!response.ok || response.data?.url){
+    if(!response.ok || !response.data?.url){
         throw new Error("could not start connection")
     }
 
@@ -57,7 +58,8 @@ export async function refreshCalendarConnection(input:{
         status,
     });
     return {
+        id: row?.user_id ?? input.userId,
         label:CALENDAR_CONNECTION_LABEL,
-        STATUS : row.status,
+        status : status === "connected",
     };
 }

@@ -37,13 +37,14 @@ export type AuthContext ={
     }
     try{
         const authinfo = await descopeClient.validateSession(token)
-        const claims = authinfo.token as Record<string,unknown>
-        const authUserId = String(claims.sub ??"")
-
+        
         if(!authinfo){
             res.status(401).json({error:"Unauthorized" , success:false})
             return
         }
+        
+        const claims = authinfo.token as Record<string,unknown>
+        const authUserId = String(claims.sub ??"")
         const email = typeof claims.email ==="string" ? claims.email : undefined;
         const user = await ensureUser({authUserId,email})
         

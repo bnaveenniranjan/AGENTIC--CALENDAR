@@ -1,7 +1,6 @@
-import { string } from 'zod';
 import { getPool } from '../db/pool.js';
 
-export type ConnectionStatus = "connected" | " disconnected" | "pending";
+export type ConnectionStatus = "connected" | "disconnected" | "pending";
 
 export type CurrentConnectionRow ={
     user_id: string;
@@ -10,6 +9,11 @@ export type CurrentConnectionRow ={
 };
 
 export async function getCalendarConnectionRow(userId: string){
+    const result = await getPool().query<CurrentConnectionRow>(
+        `SELECT user_id, provider, status FROM connection WHERE user_id = $1 AND provider = 'calendar'`,
+        [userId]
+    );
+    return result.rows[0] ?? null;
 }
 export async function upsertCalendarConnection(input:{
     userId: string;
@@ -19,7 +23,7 @@ export async function upsertCalendarConnection(input:{
    const result = await getPool().query<CurrentConnectionRow>(
         `
         INSERT INTO connection (user_id,provider,status)
-        VALUES ($1, 'calender',$2)
+        VALUES ($1, 'calendar',$2)
         on CONFLICT (user_id, provider)
         DO UPDATE SET status = EXCLUDED.status
         RETURNING user_id,provider,status

@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { CalendarDays, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/Skeleton";
 import { Button } from "../ui/button";
-import { fetchCalendarConnection, ConnectionInfo } from "@/lib/connections";
-import { SessionExpiredError } from "@/lib/api";
+import { fetchCalendarConnection, ConnectionInfo, connectionCalendar, refreshCalendarConnection } from "@/lib/connections";
 import { useRouter } from "next/navigation";
 
 const styles = {
@@ -29,24 +28,32 @@ const styles = {
   refreshIcon: "size-3.5",
 } as const;
 
+// Checks for session expiry reliably — avoids webpack instanceof issues
+function isSessionExpired(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return (
+    err.name === "SessionExpiredError" ||
+    err.message.toLowerCase().includes("session expired")
+  );
+}
 
-function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
-
+function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }) {
   const router = useRouter();
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const handleLoadCalendarConnection = useCallback(async () => {
+    if (!sessionToken) return;
     setLoading(true);
     try {
       setConnection(await fetchCalendarConnection(sessionToken));
     } catch (err) {
-      if (err instanceof SessionExpiredError) {
+      if (isSessionExpired(err)) {
         router.replace("/sign-in");
         return;
       }
-      console.error("failed to load calendar connection:", err);
+      console.error("Failed to load calendar connection:", err);
     } finally {
       setLoading(false);
     }
@@ -56,19 +63,36 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
     handleLoadCalendarConnection();
   }, [handleLoadCalendarConnection]);
 
+  if (!sessionToken) return null;
+
   async function handleCalendarConnect() {
+    if (!sessionToken) return;
     setBusy(true);
     try {
-      // connect logic here
+      await connectionCalendar(sessionToken);
+    } catch (err) {
+      if (isSessionExpired(err)) {
+        router.replace("/sign-in");
+        return;
+      }
+      console.error("Failed to start calendar connection:", err);
     } finally {
       setBusy(false);
     }
   }
 
   async function handleCalendarRefresh() {
+    if (!sessionToken) return;
     setBusy(true);
     try {
+      await refreshCalendarConnection(sessionToken);
       await handleLoadCalendarConnection();
+    } catch (err) {
+      if (isSessionExpired(err)) {
+        router.replace("/sign-in");
+        return;
+      }
+      console.error("Failed to refresh calendar connection:", err);
     } finally {
       setBusy(false);
     }

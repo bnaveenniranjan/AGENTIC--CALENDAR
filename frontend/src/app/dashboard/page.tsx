@@ -1,12 +1,11 @@
 'use client'
 
 import ChatPanel from "@/components/dashboard/chat-panel";
-import {Button} from "@/components/ui/button";
-import { useDescope, useUser } from "@descope/nextjs-sdk/client";
-import { useRouter } from "next/navigation";          
+import { Button } from "@/components/ui/button";
+import { useDescope, useUser, useSession } from "@descope/nextjs-sdk/client";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useSession } from "@descope/nextjs-sdk/client";
-import ConnectionsPanel  from "@/components/dashboard/connection-panel";
+import ConnectionsPanel from "@/components/dashboard/connection-panel";
 import { LogOut } from "lucide-react";
 
 const styles = {
@@ -22,27 +21,29 @@ const styles = {
 function DashBoardPage(){
     const sdk = useDescope();
     const router = useRouter();
-    const {isAuthenticated,sessionToken} = useSession();
+    const {isAuthenticated, isSessionLoading, sessionToken} = useSession();
     const {user,isUserLoading} = useUser();
-    const [loggingOut,setLoggingout] = useState(false);
+    const [loggingOut, setLoggingout] = useState(false);
 
+    async function handleLogout() {
+      if (loggingOut) return;
+      setLoggingout(true);
 
-    async function handleLogout(){
-
-        if(loggingOut) return
-        setLoggingout(true)
-
-        try{
-            await sdk.logout();
-            router.replace("/sign-in");
-            router.refresh();
-        }catch{
-            setLoggingout(false)
-        }
+      try {
+        await sdk.logout();
+        router.replace("/sign-in");
+        router.refresh();
+      } catch {
+        setLoggingout(false);
+      }
     }
 
-    if(!isAuthenticated || !sessionToken){
-        return <div className={styles.loadingShell}>  Checking session ... </div>
+    if (isSessionLoading) {
+      return <div className={styles.loadingShell}>Checking session ...</div>;
+    }
+
+    if (!isAuthenticated || !sessionToken) {
+      return null;
     }
 
     return (

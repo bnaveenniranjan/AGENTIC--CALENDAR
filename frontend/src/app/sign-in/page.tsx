@@ -14,7 +14,7 @@ function SignInPage(){
                 Meeting Assistant
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-                Sign in to connect calendar and start scheduling with you agent
+                Sign in to connect calendar and start scheduling with your agent
 
             </CardDescription>
         </CardHeader>
