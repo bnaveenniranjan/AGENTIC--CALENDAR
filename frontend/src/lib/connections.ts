@@ -18,7 +18,7 @@ export async function fetchCalendarConnection(token : string){
 }
 
 export async function connectionCalendar(token : string){
-    const result = await apiFetch<{url:string}>("/api/connection", {
+    const result = await apiFetch<{url:string}>("/api/connection/connect", {
         method : 'POST',
         token,
         body :{

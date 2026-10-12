@@ -38,7 +38,8 @@ connectionRouter.post("/connect",async(req,res)=>{
         })
 
         res.json(result)
-    }catch{
+    }catch(err){
+        console.error(err);
         res.status(500).json({error:"could not start connection"})
     }
 });
