@@ -1,9 +1,11 @@
 'use client'
-import {ReactNode} from "react";
+import {ReactNode, useState} from "react";
 import { MessageSquarePlus, Sparkle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { connection } from "next/server";
-import { Separator } from "@base-ui/react";
+import { Separator } from "@/components/ui/separator";
+import { ThreadSummary } from "@/lib/agent";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const styles = {
   root: "flex h-svh overflow-hidden",
@@ -91,10 +93,45 @@ type Props ={
     sessionToken : string;
     connections : ReactNode;
     footer : ReactNode;
+};
+
+
+
+type Message = {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+const WELCOME =
+  "Connect Google Calendar, then ask about today's agenda, create a Meet, or reschedule something.";
+
+const SUGGESTIONS = [
+  "What's on today?",
+  "What's on tomorrow?",
+  "Find a free slot tomorrow morning",
+  "Create a meeting on 20th aug and keep the time as 10am for 30 minutes and keep sangammukherjee1996@gmail as attendee",
+];
+
+function WelcomeMessage(): Message {
+  return {
+    id: "welcome",
+    role: "assistant",
+    content: WELCOME,
+  };
 }
 
+
 function ChatPanel ({sessionToken,connections,footer}:Props){
-    return(
+
+    const [threadId,setThread] = useState(()=>crypto.randomUUID())
+    const [message,setMessage] = useState<Message[]>([WelcomeMessage()])
+    const [threads,setThreads] = useState<ThreadSummary[]>([]);
+    const [prompt,setPrompt] = useState("")
+    const [running,setRunning] = useState(false)
+    
+
+    return( 
         <div className={styles.root}>
             <aside className={styles.aside}>
                 <div className={styles.brandRow}>
@@ -121,6 +158,19 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
                     <Separator className={styles.separator}/>   
                     <div className={styles.chatsSection}>
                         <p className={styles.chatsTitle}>chats</p>
+                        
+                        <ScrollArea className={styles.chatScroll}>
+                          {
+                            threads.length === 0 ?
+                            <p className={styles.chatsEmpty}>
+                              No chats yet. Start one and it will show up here
+                            </p>:
+                             <div className={styles.threadList}></div>
+                          }
+
+                        </ScrollArea>
+
+
                     </div>
                 </div>
             </aside>

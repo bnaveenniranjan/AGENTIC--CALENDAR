@@ -4,7 +4,7 @@ import ChatPanel from "@/components/dashboard/chat-panel";
 import { Button } from "@/components/ui/button";
 import { useDescope, useUser, useSession } from "@descope/nextjs-sdk/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ConnectionsPanel from "@/components/dashboard/connection-panel";
 import { LogOut } from "lucide-react";
 
@@ -24,6 +24,32 @@ function DashBoardPage(){
     const {isAuthenticated, isSessionLoading, sessionToken} = useSession();
     const {user,isUserLoading} = useUser();
     const [loggingOut, setLoggingout] = useState(false);
+
+    const connectionsNode = useMemo(
+      () => <ConnectionsPanel sessionToken={sessionToken} />,
+      [sessionToken]
+    );
+
+    const footerNode = useMemo(
+      () => (
+        <>
+          <div className={styles.userLabel}>
+            {isUserLoading ? "Loading..." : user?.name || user?.loginIds?.[0]}
+          </div>
+          <Button
+            variant="ghost"
+            className={styles.logoutBtn}
+            disabled={loggingOut}
+            onClick={handleLogout}
+          >
+            <LogOut className={styles.logoutIcon} />
+            {loggingOut ? "Logging out..." : "log out"}
+          </Button>
+        </>
+      ),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [isUserLoading, user, loggingOut]
+    );
 
     async function handleLogout() {
       if (loggingOut) return;
@@ -50,25 +76,8 @@ function DashBoardPage(){
         <div className={styles.shell}>
          <ChatPanel
          sessionToken={sessionToken}
-         connections = {<ConnectionsPanel sessionToken={sessionToken}/>}
-         footer={
-            <>
-            <div className={styles.userLabel}>
-                {isUserLoading ? "Loading..." : user?.name || user?.loginIds?.[0]}
-
-            </div>
-            <Button
-            variant='ghost'
-            className={styles.logoutBtn}
-            disabled={loggingOut}
-            onClick={handleLogout}
-            >
-                <LogOut className={styles.logoutIcon}/>
-                {loggingOut ? "Logging out..." : "log out"}
-
-            </Button>
-            </>
-         }
+         connections={connectionsNode}
+         footer={footerNode}
          />
         </div>
     );

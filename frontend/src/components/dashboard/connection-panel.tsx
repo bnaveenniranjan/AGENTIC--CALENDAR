@@ -39,6 +39,10 @@ function isSessionExpired(err: unknown): boolean {
 
 function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }) {
   const router = useRouter();
+  // Keep router in a ref so it never becomes a reactive dependency
+  const routerRef = useRef(router);
+  useEffect(() => { routerRef.current = router; });
+
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -50,14 +54,14 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }
       setConnection(await fetchCalendarConnection(sessionToken));
     } catch (err) {
       if (isSessionExpired(err)) {
-        router.replace("/sign-in");
+        routerRef.current.replace("/sign-in");
         return;
       }
       console.error("Failed to load calendar connection:", err);
     } finally {
       setLoading(false);
     }
-  }, [sessionToken, router]);
+  }, [sessionToken]); // ✅ router removed — stable via ref
 
   useEffect(() => {
     handleLoadCalendarConnection();
@@ -72,7 +76,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }
       await connectionCalendar(sessionToken);
     } catch (err) {
       if (isSessionExpired(err)) {
-        router.replace("/sign-in");
+        routerRef.current.replace("/sign-in");
         return;
       }
       console.error("Failed to start calendar connection:", err);
@@ -89,7 +93,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }
       await handleLoadCalendarConnection();
     } catch (err) {
       if (isSessionExpired(err)) {
-        router.replace("/sign-in");
+        routerRef.current.replace("/sign-in");
         return;
       }
       console.error("Failed to refresh calendar connection:", err);
