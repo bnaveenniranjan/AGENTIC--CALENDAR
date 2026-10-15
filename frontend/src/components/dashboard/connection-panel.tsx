@@ -28,6 +28,7 @@ const styles = {
   refreshIcon: "size-3.5",
 } as const;
 
+
 // Checks for session expiry reliably — avoids webpack instanceof issues
 function isSessionExpired(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -36,6 +37,7 @@ function isSessionExpired(err: unknown): boolean {
     err.message.toLowerCase().includes("session expired")
   );
 }
+
 
 function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }) {
   const router = useRouter();
@@ -120,7 +122,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }
           >
             <CalendarDays className={styles.icon} />
           </div>
-
+{/* bug fixed here using AI*/}
           <div className={styles.meta}>
             <p className={styles.label}>{connection.label}</p>
             <p className={cn(styles.status, connected ? styles.statusConnected : styles.statusDisconnected)}>

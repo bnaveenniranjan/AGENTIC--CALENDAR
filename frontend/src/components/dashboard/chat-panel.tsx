@@ -1,8 +1,7 @@
 'use client'
 import {ReactNode, useState} from "react";
-import { MessageSquarePlus, Sparkle } from "lucide-react";
+import { MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { connection } from "next/server";
 import { Separator } from "@/components/ui/separator";
 import { ThreadSummary } from "@/lib/agent";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -129,6 +128,11 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
     const [threads,setThreads] = useState<ThreadSummary[]>([]);
     const [prompt,setPrompt] = useState("")
     const [running,setRunning] = useState(false)
+
+
+    // labeling function if chat panel is empty 
+    const showEmpty = 
+    message.length === 1 && message[0]?.id === 'welcome' && !running
     
 
     return( 
@@ -159,7 +163,7 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
                     <div className={styles.chatsSection}>
                         <p className={styles.chatsTitle}>chats</p>
                         
-                        <ScrollArea className={styles.chatScroll}>
+                        <ScrollArea className={styles.chatsScroll}>
                           {
                             threads.length === 0 ?
                             <p className={styles.chatsEmpty}>
@@ -173,7 +177,39 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
 
                     </div>
                 </div>
+                <Separator className={styles.separator}/>
+
+                <div className={styles.footer}>{footer}</div>
             </aside>
+            <section className={styles.main}>
+            <header className={styles.header}>
+                <div className={styles.headerText}>
+                  <p className={styles.headerTitle}>Assistant</p>
+                  <p className={styles.headerSubtitle}>Schedule 📒 reschedule your meeting with AI 🤖 </p>
+                </div>
+
+              </header>
+              <div className={styles.chatColumn}>
+                  <ScrollArea className={styles.messagesScroll}>
+                          <div className={styles.messagesInner}>
+                            {
+                              showEmpty ?
+                              <div className={styles.emptyState}>
+                                <div className={styles.emptyIcon}>
+                                  <Sparkles className={styles.emptyIconSvg}/>
+                                  </div> 
+                                  <h2 className={styles.emptyTitle}>Meeting Assistant </h2>
+                            
+                          </div>:
+                          <div>
+
+                          </div>
+}
+</div>
+                  </ScrollArea>
+              </div>
+
+            </section>
         </div>
     );
 
