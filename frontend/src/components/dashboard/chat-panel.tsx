@@ -1,10 +1,11 @@
 'use client'
 import {ReactNode, useState} from "react";
-import { MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
+import { ArrowUp, LoaderCircle, MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThreadSummary } from "@/lib/agent";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "../ui/textarea";
 
 const styles = {
   root: "flex h-svh overflow-hidden",
@@ -109,7 +110,7 @@ const SUGGESTIONS = [
   "What's on today?",
   "What's on tomorrow?",
   "Find a free slot tomorrow morning",
-  "Create a meeting on 20th aug and keep the time as 10am for 30 minutes and keep sangammukherjee1996@gmail as attendee",
+  "Create a meeting on 20th aug and keep the time as 10am for 30 minutes and keep naveenniranjan30@gmail.com as attendee",
 ];
 
 function WelcomeMessage(): Message {
@@ -134,7 +135,12 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
     const showEmpty = 
     message.length === 1 && message[0]?.id === 'welcome' && !running
     
-
+    function startNewChat(){
+      if(running) return;
+      setThreadId(crypto.randomUUID());
+      setMessage([WelcomeMessage()]);
+      setPrompt("");
+    }
     return( 
         <div className={styles.root}>
             <aside className={styles.aside}>
@@ -158,7 +164,6 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
                         New Chat
                     </Button>
                     {connections}
-                    <div/>
                     <Separator className={styles.separator}/>   
                     <div className={styles.chatsSection}>
                         <p className={styles.chatsTitle}>chats</p>
@@ -197,16 +202,60 @@ function ChatPanel ({sessionToken,connections,footer}:Props){
                               <div className={styles.emptyState}>
                                 <div className={styles.emptyIcon}>
                                   <Sparkles className={styles.emptyIconSvg}/>
-                                  </div> 
-                                  <h2 className={styles.emptyTitle}>Meeting Assistant </h2>
-                            
-                          </div>:
-                          <div>
-
+                                </div>
+                                <h2 className={styles.emptyTitle}>Meeting Assistant </h2>
+                                <p className={styles.emptyCopy}>{WELCOME}</p>
+                                <div className={styles.suggestions}>
+                                  {
+                                    SUGGESTIONS.map((currentSuggestionItem)=>(
+                                      <Button
+                                        key={currentSuggestionItem}
+                                        type="button"
+                                        variant='outline'
+                                        size="sm"
+                                        className={styles.suggestionBtn}
+                                        disabled={running}
+                                      >
+                                        {currentSuggestionItem}
+                                      </Button>
+                                    ))
+                                  }
+                                </div>
+                              </div>
+                              :
+                              <div>
+                                {/* rendder message */}
+                              </div>
+                            }
                           </div>
-}
-</div>
                   </ScrollArea>
+
+                  <div className={styles.composerWrap}>
+                   <form className={styles.composerForm}>
+                    <Textarea
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      rows={1}
+                      disabled={running}
+                      placeholder="ask about your calendar..."
+                      className={styles.composerInput}
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        disabled={!prompt.trim() || running}
+                        className={styles.sendBtn}
+                        aria-label="Send Text Message"
+                      >
+                        {running
+                          ? <LoaderCircle className={styles.sendIconSpin}/>
+                          : <ArrowUp className={styles.sendIcon}/>
+                        }
+                      </Button>
+
+                   </form>
+
+                  </div>
               </div>
 
             </section>

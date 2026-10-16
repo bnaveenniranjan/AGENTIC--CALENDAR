@@ -1,10 +1,24 @@
 import type { Metadata } from "next";
-import { AuthProvider } from "@descope/nextjs-sdk";
+import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@descope/nextjs-sdk";
+import { cn } from "@/lib/utils";
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const heading = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Meeting Assistant",
-  description: "Sign in to connect calendar and start scheduling with your agent",
+  description: "Calendar meeting assistant with Descope",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,8 +35,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       sessionTokenViaCookie={cookieOptions}
       refreshTokenViaCookie={cookieOptions}
     >
-      <html lang="en" className="h-full">
-        <body className="min-h-full flex flex-col">{children}</body>
+      <html 
+        lang="en" 
+        className={cn(sans.variable,heading.variable)}
+        >
+        <body className="min-h-svh bg-background font-sans text-foreground antialiased">{children}</body>
       </html>
     </AuthProvider>
   );
