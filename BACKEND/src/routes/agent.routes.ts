@@ -14,14 +14,15 @@ const chatSchema = z.object({
 const threadIdSchema = z.uuid() 
 agentRoutes.use (requireSession);
 
-    try{
+agentRoutes.get('/threads', async (_req, res) => {
+    try {
         const threads = await listUserThreads()
-    res.json({threads})
-    }catch(error){
-    const  message = error instanceof Error ? error.message :"failed to list threads"
-    res.status(500).json({error : message})
+        res.json({ threads })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "failed to list threads"
+        res.status(500).json({ error: message })
     }
-)
+});
 
 agentRoutes.get('/threads/:threadId',async(req,res)=>{
     const parsed = threadIdSchema.safeParse(req.params.threadId)
@@ -41,7 +42,7 @@ agentRoutes.get('/threads/:threadId',async(req,res)=>{
 })
 
 
-agentRoutes.post("/chat ",async(req,res)=>{
+agentRoutes.post("/chat", async (req, res) => {
     const parsed = chatSchema.safeParse(req.body)
     if(!parsed.success){
         res.status(400).json({error : "Invalid chat body"})
