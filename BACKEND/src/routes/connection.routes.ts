@@ -15,32 +15,37 @@ connectionRouter.get("/",async(req,res)=>{
     }
 });
 
-connectionRouter.post("/connect",async(req,res)=>{
-    try{
-        const refreshToken =
-        typeof req.body?.refreshToken === 'string' ?
-        req.body.refreshToken:"";
+connectionRouter.post("/connect", async(req, res) => {
+    try {
+        const bearerToken = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim();
 
-        if(!refreshToken){
-
-            res.status(400).json({error : "Refresh token required"})
+        if (!bearerToken) {
+            res.status(400).json({ error: "Missing bearer token" });
             return;
         }
+
+        // Prefer an explicit refreshToken from the body (sent by Descope SDK on client);
+        // fall back to the bearer/session token only if not provided.
+        const refreshToken: string =
+            typeof req.body?.refreshToken === 'string' && req.body.refreshToken
+                ? req.body.refreshToken
+                : bearerToken;
+
         const redirectUrl =
-        typeof req.body?.redirectUrl === 'string' ?
-        req.body.redirectUrl:
-        `${process.env.APP_URL ?? "http://localhost:3000"}/dashboard`
+            typeof req.body?.redirectUrl === 'string'
+                ? req.body.redirectUrl
+                : `${process.env.APP_URL ?? "http://localhost:3000"}/dashboard`;
 
         const result = await createCalendarConnectUrl({
-            userId : req.auth!.userId,
+            userId: req.auth!.userId,
             refreshToken,
-            redirectUrl
-        })
+            redirectUrl,
+        });
 
-        res.json(result)
-    }catch(err){
-        console.error(err);
-        res.status(500).json({error:"could not start connection"})
+        res.json(result);
+    } catch(err) {
+        console.error("[connect] Descope outbound.connect failed:", err);
+        res.status(500).json({ error: "could not start connection" });
     }
 });
 

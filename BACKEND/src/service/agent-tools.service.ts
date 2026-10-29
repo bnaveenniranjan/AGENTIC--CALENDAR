@@ -68,7 +68,7 @@ export function createCalendarTools(authUserId: string) {
                 endIso: z.string().optional().describe('New end time as ISO-8601 datetime'),
             }),
             execute: async (input) => {
-                rescheduleMeeting({
+                return await rescheduleMeeting({
                     authUserId,
                     ...input,
                 });
@@ -82,7 +82,7 @@ export function createCalendarTools(authUserId: string) {
                 eventId: z.string().min(1),
             }),
             execute: async (input) => {
-             cancelMeeting({
+                return await cancelMeeting({
                     authUserId,
                     ...input,
                 });

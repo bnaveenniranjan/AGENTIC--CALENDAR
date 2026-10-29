@@ -1,6 +1,6 @@
  import { Agent } from "@mastra/core/agent";
 import { createAgentMemory } from "../config/memory.js";
-import { getAgentInstructions } from "../config/agent-instructions.js";
+import { getAgentInstructions } from "../config/agent-instruction.js";
 import { createCalendarTools } from "./agent-tools.service.js";
 
 export type AgentEvent = {
@@ -75,7 +75,7 @@ export async function listUserThreads(
         : String(thread.updatedAt),
   }));
 }
-
+// to pass the thread too new page , memory state used to getTHreadById
 export async function getThreadMessages(
   authUserId: string,
   threadId: string,
@@ -177,7 +177,7 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
     threadId: input.threadId,
     resourceId: input.authUserId,
   });
-
+/// assign thread for new page 
   if (thread && !thread.title?.trim()) {
     await memory.updateThread({
       id: thread.id,

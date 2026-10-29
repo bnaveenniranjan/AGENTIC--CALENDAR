@@ -1,9 +1,11 @@
 'use client'
-import {ReactNode, useState} from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowUp, LoaderCircle, MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ThreadSummary } from "@/lib/agent";
+import { listThreads, streamAgentChat, ThreadSummary } from "@/lib/agent";
+import { SessionExpiredError } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "../ui/textarea";
 
@@ -89,10 +91,10 @@ const styles = {
     "mx-auto mt-2.5 max-w-3xl text-center text-[11px] text-muted-foreground",
 } as const;
 
-type Props ={
-    sessionToken : string;
-    connections : ReactNode;
-    footer : ReactNode;
+type Props = {
+  sessionToken: string;
+  connections: ReactNode;
+  footer: ReactNode;
 };
 
 
@@ -122,146 +124,287 @@ function WelcomeMessage(): Message {
 }
 
 
-function ChatPanel ({sessionToken,connections,footer}:Props){
+function ChatPanel({ sessionToken, connections, footer }: Props) {
 
-    const [threadId,setThread] = useState(()=>crypto.randomUUID())
-    const [message,setMessage] = useState<Message[]>([WelcomeMessage()])
-    const [threads,setThreads] = useState<ThreadSummary[]>([]);
-    const [prompt,setPrompt] = useState("")
-    const [running,setRunning] = useState(false)
+  const router = useRouter();
+  const [threadId, setThreadId] = useState(() => crypto.randomUUID())
+  const [messages, setMessages] = useState<Message[]>([WelcomeMessage()])
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [prompt, setPrompt] = useState("")
+  const [running, setRunning] = useState(false)
+  const [loadingThread, setLoadingThread] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null)
 
 
-    // labeling function if chat panel is empty 
-    const showEmpty = 
-    message.length === 1 && message[0]?.id === 'welcome' && !running
-    
-    function startNewChat(){
-      if(running) return;
-      setThreadId(crypto.randomUUID());
-      setMessage([WelcomeMessage()]);
-      setPrompt("");
+  // labeling function if chat panel is empty 
+  const showEmpty =
+    messages.length === 1 && messages[0]?.id === 'welcome' && !running
+
+  const refreshThreads = useCallback(async () => {
+    try {
+      const data = await listThreads(sessionToken);
+      setThreads(data.threads);
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        router.replace("/sign-in");
+        return;
+      }
+      console.error("Failed to list threads:", err);
     }
-    return( 
-        <div className={styles.root}>
-            <aside className={styles.aside}>
-                <div className={styles.brandRow}>
-                    <div className={styles.brandLeft}>
-                          <div className={styles.brandIcon}>
-                                <Sparkle className={styles.brandIconSvg}/>
-                        </div>
+  }, [sessionToken, router]);
 
-                        <div className={styles.brandText}>
-                            <p className={styles.brandTitle}>Meet Agent</p>
-                        </div>
-                    </div>
-                </div>
-                <div className={styles.topActions}>
-                    <Button 
-                    variant ='outline'
-                    className={styles.newChatBtn}
-                    >
-                        <MessageSquarePlus className={styles.newChatIcon}/>
-                        New Chat
-                    </Button>
-                    {connections}
-                    <Separator className={styles.separator}/>   
-                    <div className={styles.chatsSection}>
-                        <p className={styles.chatsTitle}>chats</p>
-                        
-                        <ScrollArea className={styles.chatsScroll}>
-                          {
-                            threads.length === 0 ?
-                            <p className={styles.chatsEmpty}>
-                              No chats yet. Start one and it will show up here
-                            </p>:
-                             <div className={styles.threadList}></div>
-                          }
+  useEffect(() => {
+    refreshThreads();
+  }, [refreshThreads]);
 
-                        </ScrollArea>
+  console.log(threads);
 
 
-                    </div>
-                </div>
-                <Separator className={styles.separator}/>
+  function startNewChat() {
+    if (running) return;
+    setThreadId(crypto.randomUUID());
+    setMessages([WelcomeMessage()]);
+    setPrompt("");
+  }
 
-                <div className={styles.footer}>{footer}</div>
-            </aside>
-            <section className={styles.main}>
-            <header className={styles.header}>
-                <div className={styles.headerText}>
-                  <p className={styles.headerTitle}>Assistant</p>
-                  <p className={styles.headerSubtitle}>Schedule 📒 reschedule your meeting with AI 🤖 </p>
-                </div>
+  async function resumeThread(nextthreadsId: string){
+    if(running || loadingThread || nextthreadsId === threadId) return
+    setLoadingThread(true)
+    setProgress(null)
 
-              </header>
-              <div className={styles.chatColumn}>
-                  <ScrollArea className={styles.messagesScroll}>
-                          <div className={styles.messagesInner}>
-                            {
-                              showEmpty ?
-                              <div className={styles.emptyState}>
-                                <div className={styles.emptyIcon}>
-                                  <Sparkles className={styles.emptyIconSvg}/>
-                                </div>
-                                <h2 className={styles.emptyTitle}>Meeting Assistant </h2>
-                                <p className={styles.emptyCopy}>{WELCOME}</p>
-                                <div className={styles.suggestions}>
-                                  {
-                                    SUGGESTIONS.map((currentSuggestionItem)=>(
-                                      <Button
-                                        key={currentSuggestionItem}
-                                        type="button"
-                                        variant='outline'
-                                        size="sm"
-                                        className={styles.suggestionBtn}
-                                        disabled={running}
-                                      >
-                                        {currentSuggestionItem}
-                                      </Button>
-                                    ))
-                                  }
-                                </div>
-                              </div>
-                              :
-                              <div>
-                                {/* rendder message */}
-                              </div>
-                            }
-                          </div>
-                  </ScrollArea>
+    try{
+    const data = await leadthread(sessionToken, nextthreadsId)
+    setThreadId(data.thread.threadId)
+    setMessages(data.messages.length > 0 ? data.messages : [WelcomeMessage()])
+    setPrompt("")
+    // for now, we dont store messages in threads list
+    // but if we do in future, we can fetch them here.
+    setMessages([WelcomeMessage()])
+    }catch{
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "system",
+          content: "Could not load the chat",
+        },
+      ]);
 
-                  <div className={styles.composerWrap}>
-                   <form className={styles.composerForm}>
-                    <Textarea
-                      value={prompt}
-                      onChange={(event) => setPrompt(event.target.value)}
-                      rows={1}
-                      disabled={running}
-                      placeholder="ask about your calendar..."
-                      className={styles.composerInput}
-                      />
-                      <Button
-                        type="submit"
-                        size="icon"
-                        disabled={!prompt.trim() || running}
-                        className={styles.sendBtn}
-                        aria-label="Send Text Message"
-                      >
-                        {running
-                          ? <LoaderCircle className={styles.sendIconSpin}/>
-                          : <ArrowUp className={styles.sendIcon}/>
-                        }
-                      </Button>
+    }finally{
+      setLoadingThread(false)
+    }
+  }
 
-                   </form>
+  async function sendMessage(text: string) {
+    const trimmed = text.trim()
 
-                  </div>
-              </div>
+    if (!trimmed || running || loadingThread) return;
+    const assistantId = crypto.randomUUID();
 
-            </section>
+    setMessages((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(), role: 'user', content: trimmed
+      },
+      {
+        id: assistantId, role: 'assistant', content: ''
+      }
+    ])
+
+    setPrompt("")
+    setRunning(true)
+    setProgress(null)
+
+
+    try {
+      await streamAgentChat(
+        sessionToken,
+        {
+          message: trimmed, threadId
+        },
+        (event) => {
+          if (event.type === "token" && event.token) {
+            setProgress(null)
+            setMessages((current) =>
+              current.map((msg) =>
+                msg.id === assistantId ?
+                  {
+                    ...msg,
+                    content: msg.content + event.token,
+                  }
+                  : msg
+              ),
+            );
+
+          }
+
+          if (event.type === 'error') {
+            setProgress(null)
+            setMessages((current) =>
+              current.map((msg) =>
+                msg.id === assistantId ?
+                  {
+                    ...msg,
+                    content: msg.content + ' [Error occurred]',
+                  }
+                  : msg
+              )
+            )
+          }
+        },
+      );
+
+      refreshThreads();
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "system",
+          content: "Could not reach the agent API",
+        },
+      ]);
+    } finally {
+      setRunning(false)
+      setProgress(null)
+    }
+  }
+
+  function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    sendMessage(prompt);
+  }
+
+  function onkeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(prompt);
+    }
+  }
+
+  return (
+    <div className={styles.root}>
+      <aside className={styles.aside}>
+        <div className={styles.brandRow}>
+          <div className={styles.brandLeft}>
+            <div className={styles.brandIcon}>
+              <Sparkle className={styles.brandIconSvg} />
+            </div>
+
+            <div className={styles.brandText}>
+              <p className={styles.brandTitle}>Meet Agent</p>
+            </div>
+          </div>
         </div>
-    );
+        <div className={styles.topActions}>
+          <Button
+            variant='outline'
+            className={styles.newChatBtn}
+            onClick={startNewChat}
+          >
+            <MessageSquarePlus className={styles.newChatIcon} />
+            New Chat
+          </Button>
+          {connections}
+          <Separator className={styles.separator} />
+          <div className={styles.chatsSection}>
+            <p className={styles.chatsTitle}>chats</p>
+
+            <ScrollArea className={styles.chatsScroll}>
+              {
+                threads.length === 0 ?
+                  <p className={styles.chatsEmpty}>
+                    No chats yet. Start one and it will show up here
+                  </p> :
+                  <div className={styles.threadList}></div>
+              }
+
+            </ScrollArea>
+
+
+          </div>
+        </div>
+        <Separator className={styles.separator} />
+
+        <div className={styles.footer}>{footer}</div>
+      </aside>
+      <section className={styles.main}>
+        <header className={styles.header}>
+          <div className={styles.headerText}>
+            <p className={styles.headerTitle}>Assistant</p>
+            <p className={styles.headerSubtitle}>Schedule 📒 reschedule your meeting with AI 🤖 </p>
+          </div>
+
+        </header>
+        <div className={styles.chatColumn}>
+          <ScrollArea className={styles.messagesScroll}>
+            <div className={styles.messagesInner}>
+              {
+                showEmpty ?
+                  <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon}>
+                      <Sparkles className={styles.emptyIconSvg} />
+                    </div>
+                    <h2 className={styles.emptyTitle}>Meeting Assistant </h2>
+                    <p className={styles.emptyCopy}>{WELCOME}</p>
+                    <div className={styles.suggestions}>
+                      {
+                        SUGGESTIONS.map((currentSuggestionItem) => (
+                          <Button
+                            key={currentSuggestionItem}
+                            type="button"
+                            variant='outline'
+                            size="sm"
+                            className={styles.suggestionBtn}
+                            disabled={running}
+                          >
+                            {currentSuggestionItem}
+                          </Button>
+                        ))
+                      }
+                    </div>
+                  </div>
+                  :
+                  <div>
+                    {/* rendder message */}
+                  </div>
+              }
+            </div>
+          </ScrollArea>
+
+          <div className={styles.composerWrap}>
+            <form onSubmit={onSubmit} className={styles.composerForm}>
+              <Textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={onkeyDown}
+                rows={1}
+                disabled={running}
+                placeholder="ask about your calendar..."
+                className={styles.composerInput}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!prompt.trim() || running}
+                className={styles.sendBtn}
+                aria-label="Send Text Message"
+              >
+                {running
+                  ? <LoaderCircle className={styles.sendIconSpin} />
+                  : <ArrowUp className={styles.sendIcon} />
+                }
+              </Button>
+
+            </form>
+
+          </div>
+        </div>
+
+      </section>
+    </div>
+  );
 
 }
 
-export default ChatPanel ;
+export default ChatPanel;

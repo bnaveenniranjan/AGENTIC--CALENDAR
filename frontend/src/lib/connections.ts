@@ -17,12 +17,13 @@ export async function fetchCalendarConnection(token : string){
     return data.connection ?? { id: "", status: false, label: "Calendar" };
 }
 
-export async function connectionCalendar(token : string){
-    const result = await apiFetch<{url:string}>("/api/connection/connect", {
-        method : 'POST',
+export async function connectionCalendar(token: string, refreshToken?: string) {
+    const result = await apiFetch<{url:string}>("/api/connections/connect", {
+        method: 'POST',
         token,
-        body :{
-            redirectUrl : `${window.location.origin}/dashboard`,
+        body: {
+            redirectUrl: `${window.location.origin}/dashboard`,
+            ...(refreshToken ? { refreshToken } : {}),
         }
     });
     window.location.href = result.url;

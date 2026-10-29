@@ -39,7 +39,7 @@ function isSessionExpired(err: unknown): boolean {
 }
 
 
-function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }) {
+function ConnectionsPanel({ sessionToken, refreshToken }: { sessionToken: string | undefined; refreshToken?: string }) {
   const router = useRouter();
   // Keep router in a ref so it never becomes a reactive dependency
   const routerRef = useRef(router);
@@ -75,7 +75,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string | undefined }
     if (!sessionToken) return;
     setBusy(true);
     try {
-      await connectionCalendar(sessionToken);
+      await connectionCalendar(sessionToken, refreshToken);
     } catch (err) {
       if (isSessionExpired(err)) {
         routerRef.current.replace("/sign-in");

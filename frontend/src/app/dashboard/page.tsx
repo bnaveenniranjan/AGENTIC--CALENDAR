@@ -24,10 +24,11 @@ function DashBoardPage(){
     const {isAuthenticated, isSessionLoading, sessionToken} = useSession();
     const {user,isUserLoading} = useUser();
     const [loggingOut, setLoggingout] = useState(false);
+    const refreshToken = sdk.getRefreshToken?.() ?? undefined;
 
     const connectionsNode = useMemo(
-      () => <ConnectionsPanel sessionToken={sessionToken} />,
-      [sessionToken]
+      () => <ConnectionsPanel sessionToken={sessionToken} refreshToken={refreshToken} />,
+      [sessionToken, refreshToken]
     );
 
     const footerNode = useMemo(
