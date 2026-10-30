@@ -30,7 +30,7 @@ export type ThreadMessage = {
 };
 
 function modelName() {
-  return `openai/${process.env.AI_MODEL ?? "gpt-4o-mini"}`;
+  return `google/${process.env.AI_MODEL ?? "gemini-2.5-flash"}`;
 }
 
 function messageText(content: unknown): string {
@@ -122,8 +122,8 @@ export async function getThreadMessages(
 }
 // check for api key 
 export async function streamAgentReply(input: StreamAgentReplyInput) {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set env");
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set in env");
   }
 // giving agent status
   input.onEvent({

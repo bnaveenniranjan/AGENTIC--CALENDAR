@@ -22,11 +22,19 @@ export async function createCalendarConnectUrl(input :{
     refreshToken : string;
     redirectUrl:string
 }){
+    const appId = calendarAppId();
+    console.log("[connect] Using appId:", appId);
+    console.log("[connect] redirectUrl:", input.redirectUrl);
+
     const response = await descopeClient.outbound.connect(
-        calendarAppId(),
+        appId,
         {redirectUrl : input.redirectUrl},
         input.refreshToken
     )
+
+    console.log("[connect] Descope response ok:", response.ok);
+    console.log("[connect] Descope response data:", JSON.stringify(response.data));
+    console.log("[connect] Descope response error:", JSON.stringify((response as any).error));
 
     if(!response.ok || !response.data?.url){
         throw new Error("could not start connection")

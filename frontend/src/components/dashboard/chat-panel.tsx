@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { ArrowUp, LoaderCircle, MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { listThreads, streamAgentChat, ThreadSummary } from "@/lib/agent";
+import { listThreads, loadThread, streamAgentChat, ThreadSummary } from "@/lib/agent";
 import { SessionExpiredError } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "../ui/textarea";
+import { cn } from "@/lib/utils";
+import { MarkdownMessage } from "./markdown-message";
 
 const styles = {
   root: "flex h-svh overflow-hidden",
@@ -136,9 +138,9 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
   const [progress, setProgress] = useState<string | null>(null)
 
 
-  // labeling function if chat panel is empty 
+  // show empty state only when genuinely no conversation and not loading a thread
   const showEmpty =
-    messages.length === 1 && messages[0]?.id === 'welcome' && !running
+    messages.length === 1 && messages[0]?.id === 'welcome' && !running && !loadingThread
 
   const refreshThreads = useCallback(async () => {
     try {
@@ -157,8 +159,6 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
     refreshThreads();
   }, [refreshThreads]);
 
-  console.log(threads);
-
 
   function startNewChat() {
     if (running) return;
@@ -167,20 +167,17 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
     setPrompt("");
   }
 
-  async function resumeThread(nextthreadsId: string){
-    if(running || loadingThread || nextthreadsId === threadId) return
-    setLoadingThread(true)
-    setProgress(null)
+  async function resumeThread(nextthreadsId: string) {
+    if (running || loadingThread) return;
+    setLoadingThread(true);
+    setProgress(null);
 
-    try{
-    const data = await leadthread(sessionToken, nextthreadsId)
-    setThreadId(data.thread.threadId)
-    setMessages(data.messages.length > 0 ? data.messages : [WelcomeMessage()])
-    setPrompt("")
-    // for now, we dont store messages in threads list
-    // but if we do in future, we can fetch them here.
-    setMessages([WelcomeMessage()])
-    }catch{
+    try {
+      const data = await loadThread(sessionToken, nextthreadsId);
+      setThreadId(data.threadId);
+      setMessages(data.messages.length > 0 ? data.messages : [WelcomeMessage()]);
+      setPrompt("");
+    } catch {
       setMessages((current) => [
         ...current,
         {
@@ -189,9 +186,8 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
           content: "Could not load the chat",
         },
       ]);
-
-    }finally{
-      setLoadingThread(false)
+    } finally {
+      setLoadingThread(false);
     }
   }
 
@@ -316,7 +312,36 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                   <p className={styles.chatsEmpty}>
                     No chats yet. Start one and it will show up here
                   </p> :
-                  <div className={styles.threadList}></div>
+                  <div className={styles.threadList}>
+                    {
+                      threads.map((thread) => {
+                        const active = thread.id === threadId;
+                        const dateLabel = (() => {
+                          try {
+                            return new Intl.DateTimeFormat(undefined, {
+                              month: 'short', day: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            }).format(new Date(thread.updatedAt));
+                          } catch { return thread.updatedAt; }
+                        })();
+                        return (
+                          <button
+                            key={thread.id}
+                            type="button"
+                            disabled={running || loadingThread}
+                            onClick={() => { resumeThread(thread.id); }}
+                            className={cn(
+                              styles.threadBtn,
+                              active ? styles.threadBtnActive : styles.threadBtnIdle
+                            )}
+                          >
+                            <span className={styles.threadTitle}>{thread.title}</span>
+                            <span className={styles.threadTime}>{dateLabel}</span>
+                          </button>
+                        );
+                      })
+                    }
+                  </div>
               }
 
             </ScrollArea>
@@ -340,7 +365,12 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
           <ScrollArea className={styles.messagesScroll}>
             <div className={styles.messagesInner}>
               {
-                showEmpty ?
+                loadingThread ? (
+                  <div className={styles.statusRow}>
+                    <LoaderCircle className={styles.statusIcon} />
+                    <span>Loading chat…</span>
+                  </div>
+                ) : showEmpty ?
                   <div className={styles.emptyState}>
                     <div className={styles.emptyIcon}>
                       <Sparkles className={styles.emptyIconSvg} />
@@ -355,6 +385,7 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                             type="button"
                             variant='outline'
                             size="sm"
+                            onClick={() => sendMessage(currentSuggestionItem)}
                             className={styles.suggestionBtn}
                             disabled={running}
                           >
@@ -365,8 +396,42 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                     </div>
                   </div>
                   :
-                  <div>
-                    {/* rendder message */}
+                  <div className={styles.messageList}>
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          styles.messageRow,
+                          msg.role === "user" ? styles.messageRowUser : styles.messageRowAssistant
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            styles.bubble,
+                            msg.role === "user" && styles.bubbleUser,
+                            msg.role === "assistant" && styles.bubbleAssistant,
+                            msg.role === "system" && styles.bubbleSystem
+                          )}
+                        >
+                          {msg.role === "user" ? (
+                            <p className={styles.userText}>{msg.content}</p>
+                          ) : msg.content ? (
+                            <MarkdownMessage content={msg.content} tone={msg.role === "system" ? "system" : "assistant"} />
+                          ) : (
+                            <span className={styles.thinking}>
+                              <LoaderCircle className={styles.statusIconSm} />
+                              Thinking…
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {progress && (
+                      <div className={styles.statusRow}>
+                        <LoaderCircle className={styles.statusIcon} />
+                        <span>{progress}</span>
+                      </div>
+                    )}
                   </div>
               }
             </div>
