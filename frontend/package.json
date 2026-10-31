@@ -10,6 +10,7 @@
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@descope/nextjs-sdk": "^0.16.25",
+    "@descope/node-sdk": "^2.20.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "lightningcss": "^1.33.0",
