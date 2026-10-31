@@ -30,7 +30,7 @@ export type ThreadMessage = {
 };
 
 function modelName() {
-  return `google/${process.env.AI_MODEL ?? "gemini-2.5-flash"}`;
+  return `google/${process.env.AI_MODEL ?? "gemini-3.8-flash"}`;
 }
 
 function messageText(content: unknown): string {
@@ -75,6 +75,24 @@ export async function listUserThreads(
         : String(thread.updatedAt),
   }));
 }
+export async function deleteUserThread(
+  authUserId: string,
+  threadId: string,
+): Promise<void> {
+  const memory = createAgentMemory();
+
+  const thread = await memory.getThreadById({
+    threadId,
+    resourceId: authUserId,
+  });
+
+  if (!thread || thread.resourceId !== authUserId) {
+    throw new Error("Thread not found or access denied");
+  }
+
+  await memory.deleteThread(threadId);
+}
+
 // to pass the thread too new page , memory state used to getTHreadById
 export async function getThreadMessages(
   authUserId: string,

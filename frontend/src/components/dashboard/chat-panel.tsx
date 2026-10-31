@@ -1,10 +1,10 @@
 'use client'
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, LoaderCircle, MessageSquarePlus, Sparkle, Sparkles } from "lucide-react";
+import { ArrowUp, LoaderCircle, MessageSquarePlus, Sparkle, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { listThreads, loadThread, streamAgentChat, ThreadSummary } from "@/lib/agent";
+import { deleteThread, listThreads, loadThread, streamAgentChat, ThreadSummary } from "@/lib/agent";
 import { SessionExpiredError } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "../ui/textarea";
@@ -38,11 +38,25 @@ const styles = {
   chatsEmpty: "px-2 py-3 text-sm leading-relaxed text-muted-foreground",
   threadList: "space-y-1",
   threadBtn:
-    "w-full rounded-xl px-3 py-2.5 text-left transition-colors disabled:opacity-50",
+    "relative w-full rounded-xl px-3 py-2.5 text-left transition-colors disabled:opacity-50",
   threadBtnActive: "bg-sidebar-accent text-sidebar-accent-foreground",
   threadBtnIdle: "hover:bg-sidebar-accent/60",
-  threadTitle: "line-clamp-2 text-sm font-medium leading-snug",
+  threadTitle: "line-clamp-2 text-sm font-medium leading-snug pr-6",
   threadTime: "mt-1 block text-xs text-muted-foreground",
+  threadDeleteBtn:
+    "absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex size-6 items-center justify-center rounded-md transition-all duration-200 hover:bg-destructive/15 hover:text-destructive text-muted-foreground/60",
+  // popup styles
+  popupBackdrop:
+    "fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm",
+  popupBox:
+    "relative mx-4 w-full max-w-sm rounded-2xl border border-border/60 bg-card/95 p-6 shadow-2xl backdrop-blur-xl ring-1 ring-white/10",
+  popupIconWrap:
+    "mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-destructive/10",
+  popupTitle: "text-center text-base font-semibold text-foreground",
+  popupBody: "mt-2 text-center text-sm leading-relaxed text-muted-foreground",
+  popupActions: "mt-5 flex gap-2",
+  popupCancel: "flex-1 rounded-xl",
+  popupConfirm: "flex-1 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90",
   footer: "mt-auto border-t border-sidebar-border p-3",
   main: "relative flex min-w-0 flex-1 flex-col",
   header:
@@ -138,9 +152,14 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
   const [progress, setProgress] = useState<string | null>(null)
 
 
-  // show empty state only when genuinely no conversation and not loading a thread
+  const [deleteTarget, setDeleteTarget] = useState<ThreadSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const showEmpty =
     messages.length === 1 && messages[0]?.id === 'welcome' && !running && !loadingThread
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   const refreshThreads = useCallback(async () => {
     try {
@@ -159,6 +178,32 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
     refreshThreads();
   }, [refreshThreads]);
 
+  useEffect(() => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+    // Use requestAnimationFrame so the DOM has painted the new messages first
+    requestAnimationFrame(() => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+    });
+  }, [messages, progress]);
+
+  async function handleDeleteThread(thread: ThreadSummary) {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deleteThread(sessionToken, thread.id);
+      // If the deleted thread is currently active, start a fresh chat
+      if (thread.id === threadId) {
+        startNewChat();
+      }
+      await refreshThreads();
+    } catch (err) {
+      console.error("Failed to delete thread:", err);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   function startNewChat() {
     if (running) return;
@@ -219,6 +264,9 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
           message: trimmed, threadId
         },
         (event) => {
+          if(event.type === 'progress' && event.message){
+            setProgress(event.message);
+          }
           if (event.type === "token" && event.token) {
             setProgress(null)
             setMessages((current) =>
@@ -325,19 +373,33 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                           } catch { return thread.updatedAt; }
                         })();
                         return (
-                          <button
-                            key={thread.id}
-                            type="button"
-                            disabled={running || loadingThread}
-                            onClick={() => { resumeThread(thread.id); }}
-                            className={cn(
-                              styles.threadBtn,
-                              active ? styles.threadBtnActive : styles.threadBtnIdle
-                            )}
-                          >
-                            <span className={styles.threadTitle}>{thread.title}</span>
-                            <span className={styles.threadTime}>{dateLabel}</span>
-                          </button>
+                          <div key={thread.id} className="group relative">
+                            <button
+                              type="button"
+                              disabled={running || loadingThread}
+                              onClick={() => { resumeThread(thread.id); }}
+                              className={cn(
+                                styles.threadBtn,
+                                active ? styles.threadBtnActive : styles.threadBtnIdle
+                              )}
+                            >
+                              <span className={styles.threadTitle}>{thread.title}</span>
+                              <span className={styles.threadTime}>{dateLabel}</span>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Delete chat"
+                              title="Delete chat"
+                              className={styles.threadDeleteBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(thread);
+                              }}
+                              disabled={running || loadingThread || deleting}
+                            >
+                              <Trash2 className="size-3.5" strokeWidth={1.7} />
+                            </button>
+                          </div>
                         );
                       })
                     }
@@ -353,6 +415,77 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
 
         <div className={styles.footer}>{footer}</div>
       </aside>
+      {/* ── Delete confirmation popup ── */}
+      {deleteTarget && (
+        <div
+          className={styles.popupBackdrop}
+          onClick={() => !deleting && setDeleteTarget(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div
+            className={styles.popupBox}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* animated trash icon */}
+            <div className={styles.popupIconWrap}>
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-destructive"
+                aria-hidden="true"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                {/* subtle sparkle detail inside lid */}
+                <circle cx="12" cy="3.5" r="0.4" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+            <p id="delete-dialog-title" className={styles.popupTitle}>
+              Delete this chat?
+            </p>
+            <p className={styles.popupBody}>
+              <span className="font-medium text-foreground">&ldquo;{deleteTarget.title}&rdquo;</span>
+              <br />
+              This will permanently remove the conversation and all its messages.
+              This action cannot be undone.
+            </p>
+            <div className={styles.popupActions}>
+              <Button
+                variant="outline"
+                className={styles.popupCancel}
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                id="delete-dialog-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className={styles.popupConfirm}
+                onClick={() => handleDeleteThread(deleteTarget)}
+                disabled={deleting}
+                id="delete-dialog-confirm"
+              >
+                {deleting ? (
+                  <><LoaderCircle className="mr-1.5 size-3.5 animate-spin" />Deleting…</>
+                ) : (
+                  "Delete permanently"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <section className={styles.main}>
         <header className={styles.header}>
           <div className={styles.headerText}>
@@ -362,7 +495,7 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
 
         </header>
         <div className={styles.chatColumn}>
-          <ScrollArea className={styles.messagesScroll}>
+          <div ref={scrollViewportRef} className={styles.messagesScroll} style={{ overflowY: 'auto' }}>
             <div className={styles.messagesInner}>
               {
                 loadingThread ? (
@@ -387,7 +520,7 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                             size="sm"
                             onClick={() => sendMessage(currentSuggestionItem)}
                             className={styles.suggestionBtn}
-                            disabled={running}
+                            disabled={running || loadingThread}
                           >
                             {currentSuggestionItem}
                           </Button>
@@ -423,6 +556,15 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                               Thinking…
                             </span>
                           )}
+                          {
+                            progress ? (
+                              <div className={styles.statusRow}>
+                                <LoaderCircle className={styles.statusIconSm}/>
+                                {progress}
+                                </div>
+
+                            ):null
+                          }
                         </div>
                       </div>
                     ))}
@@ -432,10 +574,11 @@ function ChatPanel({ sessionToken, connections, footer }: Props) {
                         <span>{progress}</span>
                       </div>
                     )}
+                    <div ref={bottomRef} />
                   </div>
               }
             </div>
-          </ScrollArea>
+          </div>
 
           <div className={styles.composerWrap}>
             <form onSubmit={onSubmit} className={styles.composerForm}>
